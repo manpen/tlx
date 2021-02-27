@@ -341,6 +341,102 @@ static void test_sgn() {
     die_unequal(tlx::sgn(-42.0), -1);
 }
 
+static void test_full_mul() {
+    auto test32 = [](uint64_t a, uint64_t b) {
+                      // 8bit
+                      {
+                          auto ref = (a & 0xff) * (b & 0xff);
+
+                          {
+                              auto res = tlx::full_mul(static_cast<uint8_t>(a), static_cast<uint8_t>(b));
+                              die_unequal((int)res.first, (int)static_cast<uint8_t>(ref >> 8));
+                              die_unequal((int)res.second, (int)static_cast<uint8_t>(ref));
+                          }
+
+                          {
+                              auto res = tlx::details::full_mul_generic<uint8_t>(a, b);
+                              die_unequal((int)res.first, (int)static_cast<uint8_t>(ref >> 8));
+                              die_unequal((int)res.second, (int)static_cast<uint8_t>(ref));
+                          }
+                      }
+
+                      // 16bit
+                      {
+                          auto ref = (a & 0xffff) * (b & 0xffff);
+                          {
+                              auto res = tlx::full_mul(static_cast<uint16_t>(a), static_cast<uint16_t>(b));
+                              die_unequal(res.first, static_cast<uint16_t>(ref >> 16));
+                              die_unequal(res.second, static_cast<uint16_t>(ref));
+                          }
+
+                          {
+                              auto res = tlx::details::full_mul_generic<uint16_t>(a, b);
+                              die_unequal(res.first, static_cast<uint16_t>(ref >> 16));
+                              die_unequal(res.second, static_cast<uint16_t>(ref));
+                          }
+                      }
+
+                      // 32bit
+                      {
+                          auto ref = (a & 0xffffffff) * (b & 0xffffffff);
+                          {
+                              auto res = tlx::full_mul(static_cast<uint32_t>(a), static_cast<uint32_t>(b));
+                              die_unequal(res.first, static_cast<uint32_t>(ref >> 32));
+                              die_unequal(res.second, static_cast<uint32_t>(ref));
+                          }
+                          {
+                              auto res = tlx::details::full_mul_generic<uint32_t>(a, b);
+                              die_unequal(res.first, static_cast<uint32_t>(ref >> 32));
+                              die_unequal(res.second, static_cast<uint32_t>(ref));
+                          }
+                      }
+                  };
+
+    for (unsigned i = 0; i < 32; ++i) {
+        auto a = uint64_t(1) << i;
+        test32(a, a);
+        --a;
+        test32(a, a);
+    }
+
+    std::mt19937_64 gen;
+    for (unsigned i = 0; i < 10000; ++i) {
+        auto x = gen();
+        test32(x >> 32, x & 0xffffffff);
+    }
+
+    auto test64 = [](uint64_t a, uint64_t b, uint64_t rh, uint64_t rl) {
+                      // native
+                      {
+                          auto res = tlx::full_mul(a, b);
+                          die_unequal(res.first, rh);
+                          die_unequal(res.second, rl);
+                      }
+
+                      // generic
+                      {
+                          auto res = tlx::details::full_mul_generic<uint64_t>(a, b);
+                          die_unequal(res.first, rh);
+                          die_unequal(res.second, rl);
+                      }
+                  };
+
+    test64(0xffffffffffffffff, 0xffffffffffffffff, 0xfffffffffffffffe, 0x0000000000000001);
+    test64(0x0123456789abcdef, 0x0123456789abcdef, 0x14b66dc33f6ac, 0xdca5e20890f2a521);
+    test64(0x123456789abcdef0, 0xffffffffffffffff, 0x123456789abcdeef, 0xedcba98765432110);
+    test64(0x3141592654589793, 0x2718281828459045, 0x07859a6c0e3f5878, 0x680a581e63c28a9f);
+
+    // compare "native" and "generic" implemenations
+    for (unsigned i = 0; i < 10000; ++i) {
+        auto a = gen();
+        auto b = gen();
+        auto res1 = tlx::full_mul(a, b);
+        auto res2 = tlx::details::full_mul_generic<uint64_t>(a, b);
+        die_unequal(res1.first, res2.first);
+        die_unequal(res1.second, res2.second);
+    }
+}
+
 int main() {
     test_bswap();
     test_clz();
@@ -356,6 +452,7 @@ int main() {
     test_round_to_power_of_two();
     test_round_up();
     test_sgn();
+    test_full_mul();
 
     return 0;
 }

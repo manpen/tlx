@@ -27,6 +27,7 @@ print "#include <$_>\n" foreach sort glob("tlx/math/"."*.hpp");
 #include <tlx/math/ctz.hpp>
 #include <tlx/math/div_ceil.hpp>
 #include <tlx/math/ffs.hpp>
+#include <tlx/math/full_mul.hpp>
 #include <tlx/math/integer_log2.hpp>
 #include <tlx/math/is_power_of_two.hpp>
 #include <tlx/math/polynomial_regression.hpp>
