@@ -90,7 +90,7 @@ constexpr std::pair<uint32_t, uint32_t> full_mul(uint32_t a, uint32_t b) noexcep
 
 //! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 64) + x.second
 TLX_NODISCARD
-std::pair<uint64_t, uint64_t> full_mul(uint64_t a, uint64_t b) noexcept {
+inline std::pair<uint64_t, uint64_t> full_mul(uint64_t a, uint64_t b) noexcept {
 #if defined(__GNUC__) || defined(__clang__)
     auto m = static_cast<__uint128_t>(a) * b;
     return { m >> 64, m };
