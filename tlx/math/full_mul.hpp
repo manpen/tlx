@@ -18,12 +18,14 @@
 #include <cstdint>
 #include <utility>
 
+#include <tlx/define/attribute_nodiscard.hpp>
+
 namespace tlx {
 
 namespace details {
 
 template <typename T>
-[[nodiscard]]
+TLX_NODISCARD
 constexpr typename
 std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value, std::pair<T, T> >::type
 full_mul_generic(T a, T b) noexcept {
@@ -58,32 +60,36 @@ full_mul_generic(T a, T b) noexcept {
 //! \addtogroup tlx_math
 //! \{
 
-[[nodiscard]]
+TLX_NODISCARD
 constexpr std::pair<uint8_t, uint8_t> full_mul(uint8_t a, uint8_t b) noexcept {
     auto m = static_cast<uint16_t>(a) * static_cast<uint16_t>(b);
     return { m >> 8, m };
 }
 
-[[nodiscard]]
+TLX_NODISCARD
 constexpr std::pair<uint16_t, uint16_t> full_mul(uint16_t a, uint16_t b) noexcept {
     auto m = static_cast<uint32_t>(a) * b;
     return { m >> 16, m };
 }
 
-[[nodiscard]]
+TLX_NODISCARD
 constexpr std::pair<uint32_t, uint32_t> full_mul(uint32_t a, uint32_t b) noexcept {
     auto m = static_cast<uint64_t>(a) * b;
     return { m >> 32, m };
 }
 
-[[nodiscard]]
+#if defined(_MSC_VER) && _WIN64
+#pragma intrinsic(_umul128)
+#endif
+
+TLX_NODISCARD
 constexpr std::pair<uint64_t, uint64_t> full_mul(uint64_t a, uint64_t b) noexcept {
 #if defined(__GNUC__) || defined(__clang__)
     auto m = static_cast<__uint128_t>(a) * b;
     return { m >> 64, m };
 #elif defined(_MSC_VER) && _WIN64
-#pragma intrinsic(_umul128)
-    uint64_t l, h;
+    uint64_t l = 0;
+    uint64_t h = 0;
     l = _umul128(a, b, h);
     return { h, l };
 #else
