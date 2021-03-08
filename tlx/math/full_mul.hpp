@@ -106,7 +106,7 @@ static TLX_ADVANCED_CONSTEXPR std::pair<uint32_t, uint32_t> full_mul(uint32_t a,
 //! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 64) + x.second
 TLX_NODISCARD
 static TLX_ADVANCED_CONSTEXPR std::pair<uint64_t, uint64_t> full_mul(uint64_t a, uint64_t b) noexcept {
-#if defined(__GNUC__) || defined(__clang__)
+#ifdef __SIZEOF_INT128__ // this is typically available in GCC/Clang on 64bit systems
     auto m = static_cast<__uint128_t>(a) * b;
     TLX_FULLMUL_RETURN_PAIR(uint64_t, m >> 64, m);
 #elif defined(_MSC_VER) && _WIN64
