@@ -26,6 +26,14 @@
 
 namespace tlx {
 
+// unfortunately needed since the `constexpr std::pair<T, T>(T a, T b)` constructor is available only
+// starting with C++14 while the `constexpr std::pair<T, T>()` constructor is already in C++11
+#define TLX_FULLMUL_RETURN_PAIR(T, F, S) \
+    std::pair<T, T> result;              \
+    result.first = static_cast<T>(F);    \
+    result.second = static_cast<T>(S);   \
+    return result
+
 namespace details {
 
 template <typename T>
@@ -56,7 +64,7 @@ full_mul_generic(T a, T b) noexcept {
 
     const auto carry = hi(lo(albh) + lo(ahbl) + hi(albl));
 
-    return { ahbh + hi(ahbl) + hi(albh) + carry, albl + ((lo(ahbl) + lo(albh)) << (4 * sizeof(T))) };
+    TLX_FULLMUL_RETURN_PAIR(T, ahbh + hi(ahbl) + hi(albh) + carry, albl + ((lo(ahbl) + lo(albh)) << (4 * sizeof(T))));
 }
 }
 
@@ -67,21 +75,21 @@ full_mul_generic(T a, T b) noexcept {
 TLX_NODISCARD
 constexpr std::pair<uint8_t, uint8_t> full_mul(uint8_t a, uint8_t b) noexcept {
     auto m = static_cast<uint16_t>(a) * static_cast<uint16_t>(b);
-    return { static_cast<uint8_t>(m >> 8), static_cast<uint8_t>(m) };
+    TLX_FULLMUL_RETURN_PAIR(uint8_t, m >> 8, m);
 }
 
 //! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 16) + x.second
 TLX_NODISCARD
 constexpr std::pair<uint16_t, uint16_t> full_mul(uint16_t a, uint16_t b) noexcept {
     auto m = static_cast<uint32_t>(a) * b;
-    return { static_cast<uint16_t>(m >> 16), static_cast<uint16_t>(m) };
+    TLX_FULLMUL_RETURN_PAIR(uint16_t, m >> 16, m);
 }
 
 //! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 32) + x.second
 TLX_NODISCARD
 constexpr std::pair<uint32_t, uint32_t> full_mul(uint32_t a, uint32_t b) noexcept {
     auto m = static_cast<uint64_t>(a) * b;
-    return { static_cast<uint32_t>(m >> 32), static_cast<uint32_t>(m) };
+    TLX_FULLMUL_RETURN_PAIR(uint32_t, m >> 32, m);
 }
 
 #if defined(_MSC_VER) && _WIN64
@@ -93,18 +101,20 @@ TLX_NODISCARD
 inline std::pair<uint64_t, uint64_t> full_mul(uint64_t a, uint64_t b) noexcept {
 #if defined(__GNUC__) || defined(__clang__)
     auto m = static_cast<__uint128_t>(a) * b;
-    return { m >> 64, m };
+    TLX_FULLMUL_RETURN_PAIR(uint64_t, m >> 64, m);
 #elif defined(_MSC_VER) && _WIN64
     uint64_t l = 0;
     uint64_t h = 0;
     l = _umul128(a, b, &h);
-    return { h, l };
+    TLX_FULLMUL_RETURN_PAIR(uint64_t, h, l);
 #else
     return details::full_mul_generic(a, b);
 #endif
 }
 
-//! constexpr variant of full_mul(uint64_t a, uint64_t b) which cannot be constexpr on MSVC
+//! constexpr variant of full_mul(uint64_t a, uint64_t b) which cannot be constexpr on MSVC.
+//! this implementation is probably slower than `full_mul` and should only be used for
+//! compile-time computation.
 TLX_NODISCARD
 constexpr std::pair<uint64_t, uint64_t> full_mul_ce(uint64_t a, uint64_t b) noexcept {
     return details::full_mul_generic(a, b);
@@ -112,6 +122,8 @@ constexpr std::pair<uint64_t, uint64_t> full_mul_ce(uint64_t a, uint64_t b) noex
 
 //! \}
 }
+
+#undef TLX_FULLMUL_RETURN_PAIR
 
 #endif // !TLX_MATH_FULL_MUL_HEADER
 
