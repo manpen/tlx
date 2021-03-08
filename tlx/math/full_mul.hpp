@@ -18,6 +18,10 @@
 #include <cstdint>
 #include <utility>
 
+#if defined(_MSC_VER) && _WIN64
+#include <intrin.h>
+#endif
+
 #include <tlx/define/attribute_nodiscard.hpp>
 
 namespace tlx {
@@ -37,9 +41,8 @@ full_mul_generic(T a, T b) noexcept {
  *         + (a_lo * b_lo) <<  0           |HHHHLLLL
  *                                          ^^^^ - may trigger carry
  */
-    constexpr size_t kBitHalfWord = 4 * sizeof(T);
-    auto lo = [](T x) { return x & ((T(1) << kBitHalfWord) - 1); };
-    auto hi = [](T x) { return x >> kBitHalfWord; };
+    auto lo = [](T x) { return x & ((T(1) << (4 * sizeof(T))) - 1); };
+    auto hi = [](T x) { return x >> (4 * sizeof(T)); };
 
     const auto a_lo = lo(a);
     const auto a_hi = hi(a);
@@ -53,48 +56,58 @@ full_mul_generic(T a, T b) noexcept {
 
     const auto carry = hi(lo(albh) + lo(ahbl) + hi(albl));
 
-    return { ahbh + hi(ahbl) + hi(albh) + carry, albl + ((lo(ahbl) + lo(albh)) << kBitHalfWord) };
+    return { ahbh + hi(ahbl) + hi(albh) + carry, albl + ((lo(ahbl) + lo(albh)) << (4 * sizeof(T))) };
 }
 }
 
 //! \addtogroup tlx_math
 //! \{
 
+//! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 8) + x.second
 TLX_NODISCARD
 constexpr std::pair<uint8_t, uint8_t> full_mul(uint8_t a, uint8_t b) noexcept {
     auto m = static_cast<uint16_t>(a) * static_cast<uint16_t>(b);
-    return { m >> 8, m };
+    return { static_cast<uint8_t>(m >> 8), static_cast<uint8_t>(m) };
 }
 
+//! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 16) + x.second
 TLX_NODISCARD
 constexpr std::pair<uint16_t, uint16_t> full_mul(uint16_t a, uint16_t b) noexcept {
     auto m = static_cast<uint32_t>(a) * b;
-    return { m >> 16, m };
+    return { static_cast<uint16_t>(m >> 16), static_cast<uint16_t>(m) };
 }
 
+//! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 32) + x.second
 TLX_NODISCARD
 constexpr std::pair<uint32_t, uint32_t> full_mul(uint32_t a, uint32_t b) noexcept {
     auto m = static_cast<uint64_t>(a) * b;
-    return { m >> 32, m };
+    return { static_cast<uint32_t>(m >> 32), static_cast<uint32_t>(m) };
 }
 
 #if defined(_MSC_VER) && _WIN64
 #pragma intrinsic(_umul128)
 #endif
 
+//! compute full multiplication x = full_mul(a,b) <=> a*b = (x.first << 64) + x.second
 TLX_NODISCARD
-constexpr std::pair<uint64_t, uint64_t> full_mul(uint64_t a, uint64_t b) noexcept {
+std::pair<uint64_t, uint64_t> full_mul(uint64_t a, uint64_t b) noexcept {
 #if defined(__GNUC__) || defined(__clang__)
     auto m = static_cast<__uint128_t>(a) * b;
     return { m >> 64, m };
 #elif defined(_MSC_VER) && _WIN64
     uint64_t l = 0;
     uint64_t h = 0;
-    l = _umul128(a, b, h);
+    l = _umul128(a, b, &h);
     return { h, l };
 #else
     return details::full_mul_generic(a, b);
 #endif
+}
+
+//! constexpr variant of full_mul(uint64_t a, uint64_t b) which cannot be constexpr on MSVC
+TLX_NODISCARD
+constexpr std::pair<uint64_t, uint64_t> full_mul_ce(uint64_t a, uint64_t b) noexcept {
+    return details::full_mul_generic(a, b);
 }
 
 //! \}
