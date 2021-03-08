@@ -349,14 +349,14 @@ static void test_full_mul() {
 
                           {
                               auto res = tlx::full_mul(static_cast<uint8_t>(a), static_cast<uint8_t>(b));
-                              die_unequal((int)res.first, (int)static_cast<uint8_t>(ref >> 8));
-                              die_unequal((int)res.second, (int)static_cast<uint8_t>(ref));
+                              die_unequal(static_cast<int>(res.first), static_cast<int>(static_cast<uint8_t>(ref >> 8)));
+                              die_unequal(static_cast<int>(res.second), static_cast<int>(static_cast<uint8_t>(ref)));
                           }
 
                           {
                               auto res = tlx::details::full_mul_generic<uint8_t>(a, b);
-                              die_unequal((int)res.first, (int)static_cast<uint8_t>(ref >> 8));
-                              die_unequal((int)res.second, (int)static_cast<uint8_t>(ref));
+                              die_unequal(static_cast<int>(res.first), static_cast<int>(static_cast<uint8_t>(ref >> 8)));
+                              die_unequal(static_cast<int>(res.second), static_cast<int>(static_cast<uint8_t>(ref)));
                           }
                       }
 
